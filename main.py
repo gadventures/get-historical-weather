@@ -42,21 +42,107 @@ city_url = "https://rest.gadventures.com/places/?feature.code=PPL&country.name=A
 
 cities_df = cities(city_url, gapi_key)
 
-print(cities_df)
-
 # for each location, make an api call, and append the relevant details to the dataframe
 
 cities_df = cities_df[0:3]
 
-# save a blank dictionary so we can add to it, city-by-city
-climateAverage = {}
+# create blank climate dataframe to write weather info to
+climate_df = pd.DataFrame(
+    columns=[
+        "id",
+        "name",
+        "state",
+        "country",
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    ]
+)
+
 
 for city in cities_df.iterrows():
-    data = get_monthly_weather(
+
+    # get weather from API for this city
+    monthList = get_monthly_weather(
         weather_api_key, city[1]["latitude"], city[1]["longitude"]
     )
 
-    climateAverage[city[1]["id"]] = data["data"]["ClimateAverages"]
+    # monthList is now a list of every month of the year, with relevant weather
 
+    # create Series which holds information for the new row
+    newRow = {
+        "id": city[1]["id"],
+        "name": city[1]["name"],
+        "state": city[1]["state_name"],
+        "country": city[1]["country_ISO"],
+        "Jan": monthList[0],
+        "Feb": monthList[1],
+        "Mar": monthList[2],
+        "Apr": monthList[3],
+        "May": monthList[4],
+        "Jun": monthList[5],
+        "Jul": monthList[6],
+        "Aug": monthList[7],
+        "Sep": monthList[8],
+        "Oct": monthList[9],
+        "Nov": monthList[10],
+        "Dec": monthList[11],
+    }
 
-print(climateAverage)
+    climate_df = climate_df.append(newRow, ignore_index=True)
+
+# change "id" column to be the index
+climate_df.set_index("id", inplace=True)
+
+# take each monthly column and spread the data into invidual columns, with the month as the prefix
+month_names = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+]
+
+for month in month_names:
+    avgMinTempC = "{}_avgMinTempC".format(month)
+    avgMinTempF = "{}_avgMinTempF".format(month)
+    avgMaxTempC = "{}_avgMaxTempC".format(month)
+    avgMaxTempF = "{}_avgMaxTempF".format(month)
+    avgDailyRainfall = "{}_avgDailyRainfall".format(month)
+
+    climate_df[avgMinTempC] = climate_df.apply(
+        lambda row: "{:.2f}".format(float(row[month]["avgMinTemp"])), axis=1
+    )
+    climate_df[avgMinTempF] = climate_df.apply(
+        lambda row: "{:.2f}".format(float(row[month]["avgMinTemp_F"])), axis=1
+    )
+    climate_df[avgMaxTempC] = climate_df.apply(
+        lambda row: "{:.2f}".format(float(row[month]["absMaxTemp"])), axis=1
+    )
+    climate_df[avgMaxTempF] = climate_df.apply(
+        lambda row: "{:.2f}".format(float(row[month]["absMaxTemp_F"])), axis=1
+    )
+    climate_df[avgDailyRainfall] = climate_df.apply(
+        lambda row: "{:.2f}".format(float(row[month]["avgDailyRainfall"])), axis=1
+    )
+
+climate_df.drop(columns=month_names, inplace=True)
+
+climate_df.to_csv("climate_data.csv")
+

@@ -32,10 +32,16 @@ def requests_retry_session(
 
 def get_monthly_weather(weather_api_key, latitude, longitude):
 
+    # save a blank list so we can write the monthly dictionaries to it
+    monthList = []
+
     url = "https://api.worldweatheronline.com/premium/v1/weather.ashx?key={}&q={},{}&format=json&num_of_days=0&fx=no&cc=no&mca=yes&fx24=no&includelocation=no&show_comments=no".format(
         weather_api_key, latitude, longitude
     )
 
     data = requests_retry_session().get(url).json()
 
-    return data
+    # add returned monthly data to the output list
+    monthList.extend(data["data"]["ClimateAverages"][0]["month"])
+
+    return monthList
