@@ -1,7 +1,10 @@
+from queue import Queue, Empty
 import requests
 import pandas as pd
 import datetime
+import time
 import threading
+from functools import partial
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 
@@ -68,37 +71,67 @@ climate_df = pd.DataFrame(
     ]
 )
 
+# create blank tasks list. A task is a city which will produce monthly weather, in a dataframe format
+
+tasks = []
+
 
 for city in cities_df.iterrows():
-
-    # get weather from API for this city
-    monthList = get_monthly_weather(
-        weather_api_key, city[1]["latitude"], city[1]["longitude"]
+    task = partial(
+        get_monthly_weather,
+        weather_api_key,
+        city,
+        city[1]["latitude"],
+        city[1]["longitude"],
     )
+    tasks.append(task)
 
-    # monthList is now a list of every month of the year, with relevant weather
 
-    # create Series which holds information for the new row
-    newRow = {
-        "id": city[1]["id"],
-        "name": city[1]["name"],
-        "state": city[1]["state_name"],
-        "country": city[1]["country_ISO"],
-        "Jan": monthList[0],
-        "Feb": monthList[1],
-        "Mar": monthList[2],
-        "Apr": monthList[3],
-        "May": monthList[4],
-        "Jun": monthList[5],
-        "Jul": monthList[6],
-        "Aug": monthList[7],
-        "Sep": monthList[8],
-        "Oct": monthList[9],
-        "Nov": monthList[10],
-        "Dec": monthList[11],
-    }
+class Worker(threading.Thread):
+    def __init__(self, queue, quit_ev, timeout=1):
+        super(Worker, self).__init__()
+        self.q = queue
+        self.quit_ev = quit_ev
+        self.timeout = timeout
 
-    climate_df = climate_df.append(newRow, ignore_index=True)
+    def run(self):
+        while not self.quit_ev.is_set():
+            try:
+                item = self.q.get(True, self.timeout)  # block unless timeout
+                if item is not None:
+                    try:
+                        item()
+                    except Exception as err:
+                        print(str(err))
+                    self.q.task_done()
+            except Empty:
+                pass
+
+
+def runBatch(listOfFunctions, num_worker_threads=4):
+    quit_ev = threading.Event()
+    q = Queue()
+    kids = []
+    for i in range(num_worker_threads):
+        t = Worker(q, quit_ev)
+        t.start()
+        kids.append(t)
+
+    for item in listOfFunctions:
+        q.put(item)
+
+    q.join()  # block until all tasks are done
+    # signal child threads to end
+    quit_ev.set()
+    for t in kids:
+        t.join()
+
+
+# now call runBatch from the workers file above
+tic = time.perf_counter()
+runBatch(tasks, num_worker_threads=12)
+toc = time.perf_counter()
+print("Completed in {toc - tic:0.4f} seconds")
 
 # change "id" column to be the index
 climate_df.set_index("id", inplace=True)

@@ -30,7 +30,7 @@ def requests_retry_session(
     return session
 
 
-def get_monthly_weather(weather_api_key, latitude, longitude):
+def get_monthly_weather(weather_api_key, city, latitude, longitude):
 
     # save a blank list so we can write the monthly dictionaries to it
     monthList = []
@@ -44,4 +44,26 @@ def get_monthly_weather(weather_api_key, latitude, longitude):
     # add returned monthly data to the output list
     monthList.extend(data["data"]["ClimateAverages"][0]["month"])
 
-    return monthList
+    # create Series which holds information for the new row
+    newRow = {
+        "id": city[1]["id"],
+        "name": city[1]["name"],
+        "state": city[1]["state_name"],
+        "country": city[1]["country_ISO"],
+        "Jan": monthList[0],
+        "Feb": monthList[1],
+        "Mar": monthList[2],
+        "Apr": monthList[3],
+        "May": monthList[4],
+        "Jun": monthList[5],
+        "Jul": monthList[6],
+        "Aug": monthList[7],
+        "Sep": monthList[8],
+        "Oct": monthList[9],
+        "Nov": monthList[10],
+        "Dec": monthList[11],
+    }
+
+    climate_df = climate_df.append(newRow, ignore_index=True)
+
+    return
