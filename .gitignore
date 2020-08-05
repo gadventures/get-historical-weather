@@ -4,3 +4,6 @@ __pycache__/weather_api.cpython-37.pyc
 __pycache__/secret.cpython-37.pyc
 __pycache__/main.cpython-37.pyc
 __pycache__/get_cities.cpython-37.pyc
+total_cities.csv
+.vscode/launch.json
+climate_data.csv

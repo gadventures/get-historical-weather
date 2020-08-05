@@ -33,43 +33,78 @@ def requests_retry_session(
     return session
 
 
+# create a dictionary composed of blank lists. Here is where we will put the information which becomes dataframe columns.
+
+columns = {
+    "id": [],
+    "name": [],
+    "state": [],
+    "country": [],
+    "Jan": [],
+    "Feb": [],
+    "Mar": [],
+    "Apr": [],
+    "May": [],
+    "Jun": [],
+    "Jul": [],
+    "Aug": [],
+    "Sep": [],
+    "Oct": [],
+    "Nov": [],
+    "Dec": [],
+}
+
+
+def get_monthly_weather(weather_api_key, city, latitude, longitude):
+
+    url = "https://api.worldweatheronline.com/premium/v1/weather.ashx?key={}&q={},{}&format=json&num_of_days=0&fx=no&cc=no&mca=yes&fx24=no&includelocation=no&show_comments=no".format(
+        weather_api_key, latitude, longitude
+    )
+
+    data = requests_retry_session().get(url).json()
+
+    # save base level of returned data
+    weather = data["data"]["ClimateAverages"][0]["month"]
+
+    # take each variable and add it to the relevant list in the columns dictionary
+    columns["id"].append(city[1]["id"])
+    columns["name"].append(city[1]["name"])
+    columns["state"].append(city[1]["state_name"])
+    columns["country"].append(city[1]["country_ISO"])
+    columns["Jan"].append(weather[0])
+    columns["Feb"].append(weather[1])
+    columns["Mar"].append(weather[2])
+    columns["Apr"].append(weather[3])
+    columns["May"].append(weather[4])
+    columns["Jun"].append(weather[5])
+    columns["Jul"].append(weather[6])
+    columns["Aug"].append(weather[7])
+    columns["Sep"].append(weather[8])
+    columns["Oct"].append(weather[9])
+    columns["Nov"].append(weather[10])
+    columns["Dec"].append(weather[11])
+
+    return
+
+
 # set application key
 from secret import weather_api_key, gapi_key
 
+
 # import module to get all cities that are relevant
 from get_cities import cities
-from weather_api import get_monthly_weather
 
 # first get all locations that we need historical weather for
-city_url = "https://rest.gadventures.com/places/?feature.code=PPL&country.name=Australia&state.id=AU-TAS"
+city_url = (
+    "https://rest.gadventures.com/places/?feature.code=PPL&country.name=Australia"
+)
 
 cities_df = cities(city_url, gapi_key)
 
 # for each location, make an api call, and append the relevant details to the dataframe
 
-cities_df = cities_df[0:3]
+# cities_df = cities_df[0:3]
 
-# create blank climate dataframe to write weather info to
-climate_df = pd.DataFrame(
-    columns=[
-        "id",
-        "name",
-        "state",
-        "country",
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-    ]
-)
 
 # create blank tasks list. A task is a city which will produce monthly weather, in a dataframe format
 
@@ -131,8 +166,11 @@ def runBatch(listOfFunctions, num_worker_threads=4):
 tic = time.perf_counter()
 runBatch(tasks, num_worker_threads=12)
 toc = time.perf_counter()
-print("Completed in {toc - tic:0.4f} seconds")
+total_time = toc - tic
+print(total_time)
 
+
+climate_df = pd.DataFrame(data=columns)
 # change "id" column to be the index
 climate_df.set_index("id", inplace=True)
 
@@ -162,11 +200,11 @@ for month in month_names:
     climate_df[avgMinTempC] = climate_df.apply(
         lambda row: "{:.2f}".format(float(row[month]["avgMinTemp"])), axis=1
     )
-    climate_df[avgMinTempF] = climate_df.apply(
-        lambda row: "{:.2f}".format(float(row[month]["avgMinTemp_F"])), axis=1
-    )
     climate_df[avgMaxTempC] = climate_df.apply(
         lambda row: "{:.2f}".format(float(row[month]["absMaxTemp"])), axis=1
+    )
+    climate_df[avgMinTempF] = climate_df.apply(
+        lambda row: "{:.2f}".format(float(row[month]["avgMinTemp_F"])), axis=1
     )
     climate_df[avgMaxTempF] = climate_df.apply(
         lambda row: "{:.2f}".format(float(row[month]["absMaxTemp_F"])), axis=1

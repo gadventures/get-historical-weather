@@ -77,8 +77,14 @@ def cities(city_url, gapi_key):
     total_cities = len(cities_df.index)
 
     # extract the country and state information
+    def get_state(state):
+        if state is not None:
+            return state["name"]
+        else:
+            return ""
+
     cities_df["country_ISO"] = cities_df.apply(lambda row: row.country["id"], axis=1)
-    cities_df["state_name"] = cities_df.apply(lambda row: row.state["name"], axis=1)
+    cities_df["state_name"] = cities_df.apply(lambda row: get_state(row.state), axis=1)
 
     # drop unnecessary columns
     cities_df = cities_df.drop(

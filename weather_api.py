@@ -4,6 +4,7 @@ import datetime
 import threading
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+from main.py import columns
 
 
 def requests_retry_session(
@@ -32,38 +33,33 @@ def requests_retry_session(
 
 def get_monthly_weather(weather_api_key, city, latitude, longitude):
 
-    # save a blank list so we can write the monthly dictionaries to it
-    monthList = []
-
     url = "https://api.worldweatheronline.com/premium/v1/weather.ashx?key={}&q={},{}&format=json&num_of_days=0&fx=no&cc=no&mca=yes&fx24=no&includelocation=no&show_comments=no".format(
         weather_api_key, latitude, longitude
     )
 
     data = requests_retry_session().get(url).json()
 
-    # add returned monthly data to the output list
-    monthList.extend(data["data"]["ClimateAverages"][0]["month"])
+    # save base level of returned data
+    weather = data["data"]["ClimateAverages"][0]["month"]
 
-    # create Series which holds information for the new row
-    newRow = {
-        "id": city[1]["id"],
-        "name": city[1]["name"],
-        "state": city[1]["state_name"],
-        "country": city[1]["country_ISO"],
-        "Jan": monthList[0],
-        "Feb": monthList[1],
-        "Mar": monthList[2],
-        "Apr": monthList[3],
-        "May": monthList[4],
-        "Jun": monthList[5],
-        "Jul": monthList[6],
-        "Aug": monthList[7],
-        "Sep": monthList[8],
-        "Oct": monthList[9],
-        "Nov": monthList[10],
-        "Dec": monthList[11],
-    }
+    # take each variable and add it to the relevant list in the columns dictionary
+    columns["id"].append(city[1]["id"])
+    columns["name"].append(city[1]["name"])
+    columns["state"].append(city[1]["state_name"])
+    columns["country"].append(city[1]["country_ISO"])
+    columns["Jan"].append(weather[0])
+    columns["Feb"].append(weather[1])
+    columns["Mar"].append(weather[2])
+    columns["Apr"].append(weather[3])
+    columns["May"].append(weather[4])
+    columns["Jun"].append(weather[5])
+    columns["Jul"].append(weather[6])
+    columns["Aug"].append(weather[7])
+    columns["Sep"].append(weather[8])
+    columns["Oct"].append(weather[9])
+    columns["Nov"].append(weather[10])
+    columns["Dec"].append(weather[11])
 
-    climate_df = climate_df.append(newRow, ignore_index=True)
+    print("Completed successfully for {}".format(city[1]["name"]))
 
     return
